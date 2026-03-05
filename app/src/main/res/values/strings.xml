@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">WeatherApp</string>
+    <string name="city_hint">Введите город</string>
+    <string name="forecast_label">Прогноз на 5 дней</string>
+    <string name="weather_api_key_message">Добавьте WEATHER_API_KEY в local.properties</string>
+    <string name="empty_city_message">Введите название города</string>
+    <string name="weather_error_message">Не удалось загрузить погоду</string>
+    <string name="feels_like_format">Ощущается как %1$s°C</string>
+    <string name="temp_format">%1$s°C</string>
+    <string name="day_temp_format">%1$s°C / %2$s°C</string>
+</resources>
