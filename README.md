@@ -46,6 +46,15 @@
    - В Android Studio: **File → Settings → Build Tools → Gradle**
    - Выберите Gradle JDK 17+.
    - Нажмите **Sync Now**.
+=======
+## Как запустить
+1. Откройте проект в Android Studio.
+2. Добавьте API ключ OpenWeatherMap в `local.properties`:
+   ```properties
+   WEATHER_API_KEY=ваш_ключ
+   ```
+3. Запустите приложение на эмуляторе или устройстве.
+
 
 ## API
 Используется OpenWeatherMap:
