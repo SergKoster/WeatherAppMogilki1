@@ -15,8 +15,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val weatherApiKey = project.findProperty("WEATHER_API_KEY") as String? ?: ""
-        buildConfigField("String", "WEATHER_API_KEY", "\"$weatherApiKey\"")
+        val weatherApiKey = project.findProperty("WEATHER_API_KEY") as String? ?: "put_your_openweathermap_api_key_here"
+        resValue("string", "weather_api_key", "\"$weatherApiKey\"")
     }
 
     buildTypes {
@@ -34,9 +34,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    buildFeatures {
-        buildConfig = true
-    }
 }
 
 dependencies {

@@ -22,10 +22,10 @@ import com.example.weatherapp.ui.ForecastDayUiModel;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.TextStyle;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +37,9 @@ import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String METRIC_UNITS = "metric";
+    private static final String LANG_RU = "ru";
+
     private final WeatherApiService weatherApiService = WeatherClient.create();
 
     private TextInputEditText cityEditText;
@@ -46,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView tempTextView;
     private TextView feelsLikeTextView;
     private ForecastAdapter forecastAdapter;
+
+    private String apiKey;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
         weatherIconImageView = findViewById(R.id.weatherIconImageView);
         tempTextView = findViewById(R.id.tempTextView);
         feelsLikeTextView = findViewById(R.id.feelsLikeTextView);
+        apiKey = getString(R.string.weather_api_key).trim();
 
         RecyclerView forecastRecyclerView = findViewById(R.id.forecastRecyclerView);
         forecastRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -73,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
-        if (BuildConfig.WEATHER_API_KEY.isEmpty()) {
+        if (TextUtils.isEmpty(apiKey) || "put_your_openweathermap_api_key_here".equals(apiKey)) {
             Toast.makeText(this, getString(R.string.weather_api_key_message), Toast.LENGTH_LONG).show();
             return;
         }
@@ -94,8 +100,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadCurrentWeather(String city) {
-        weatherApiService.getCurrentWeather(city, BuildConfig.WEATHER_API_KEY, "metric", "ru")
-                .enqueue(new Callback<>() {
+        weatherApiService.getCurrentWeather(city, apiKey, METRIC_UNITS, LANG_RU)
+                .enqueue(new Callback<CurrentWeatherResponse>() {
                     @Override
                     public void onResponse(@NonNull Call<CurrentWeatherResponse> call,
                                            @NonNull Response<CurrentWeatherResponse> response) {
@@ -129,8 +135,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadForecast(String city) {
-        weatherApiService.getForecast(city, BuildConfig.WEATHER_API_KEY, "metric", "ru")
-                .enqueue(new Callback<>() {
+        weatherApiService.getForecast(city, apiKey, METRIC_UNITS, LANG_RU)
+                .enqueue(new Callback<ForecastResponse>() {
                     @Override
                     public void onResponse(@NonNull Call<ForecastResponse> call,
                                            @NonNull Response<ForecastResponse> response) {
@@ -151,19 +157,38 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private List<ForecastDayUiModel> mapToFiveDays(List<ForecastResponse.ForecastItem> items) {
-        Map<LocalDate, ForecastAccumulator> byDay = new LinkedHashMap<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+        SimpleDateFormat fullFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
+        SimpleDateFormat dayKeyFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        SimpleDateFormat dayLabelFormat = new SimpleDateFormat("EE", new Locale("ru"));
+
+        String todayKey = dayKeyFormat.format(new Date());
+        Map<String, ForecastAccumulator> byDay = new LinkedHashMap<>();
 
         for (ForecastResponse.ForecastItem item : items) {
             if (item.getDateText() == null || item.getMainData() == null) {
                 continue;
             }
 
-            LocalDate date = LocalDate.parse(item.getDateText(), formatter);
-            ForecastAccumulator accumulator = byDay.get(date);
+            Date parsedDate;
+            try {
+                parsedDate = fullFormat.parse(item.getDateText());
+            } catch (ParseException ignored) {
+                continue;
+            }
+            if (parsedDate == null) {
+                continue;
+            }
+
+            String dayKey = dayKeyFormat.format(parsedDate);
+            if (dayKey.compareTo(todayKey) <= 0) {
+                continue;
+            }
+
+            ForecastAccumulator accumulator = byDay.get(dayKey);
             if (accumulator == null) {
                 accumulator = new ForecastAccumulator();
-                byDay.put(date, accumulator);
+                accumulator.date = parsedDate;
+                byDay.put(dayKey, accumulator);
             }
 
             accumulator.minTemp = Math.min(accumulator.minTemp, item.getMainData().getTempMin());
@@ -174,15 +199,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         List<ForecastDayUiModel> result = new ArrayList<>();
-        LocalDate today = LocalDate.now();
-
-        for (Map.Entry<LocalDate, ForecastAccumulator> entry : byDay.entrySet()) {
-            if (!entry.getKey().isAfter(today)) {
-                continue;
-            }
-
-            ForecastAccumulator acc = entry.getValue();
-            String dayName = entry.getKey().getDayOfWeek().getDisplayName(TextStyle.SHORT, new Locale("ru"));
+        for (ForecastAccumulator acc : byDay.values()) {
+            String dayName = dayLabelFormat.format(acc.date);
             result.add(new ForecastDayUiModel(
                     dayName,
                     (int) Math.round(acc.minTemp),
@@ -206,5 +224,6 @@ public class MainActivity extends AppCompatActivity {
         private double minTemp = Double.MAX_VALUE;
         private double maxTemp = -Double.MAX_VALUE;
         private String iconCode;
+        private Date date;
     }
 }
